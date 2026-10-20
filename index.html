@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hapus & Auto Border Tabel DOCX</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #172033;
+            background: #f3f6fb;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            min-height: 100vh;
+            display: grid;
+            place-items: start center;
+            padding: 40px 18px;
+        }
+
+        main {
+            width: min(100%, 760px);
+            background: #fff;
+            border: 1px solid #dce3ef;
+            border-radius: 16px;
+            box-shadow: 0 16px 40px rgba(33, 50, 86, .08);
+            padding: clamp(22px, 5vw, 40px);
+        }
+
+        h1 { margin: 0; font-size: clamp(1.45rem, 3vw, 2rem); line-height: 1.2; }
+        h2 { margin: 0; font-size: 1rem; }
+
+        .intro, .hint, .note {
+            color: #56647a;
+            line-height: 1.55;
+        }
+
+        .intro { margin: 12px 0 26px; }
+        .hint { margin: 7px 0 0; font-size: .875rem; }
+        .note { margin: 18px 0 0; font-size: .84rem; }
+
+        form { display: grid; gap: 20px; }
+        .field { display: grid; gap: 8px; }
+        label { font-size: .92rem; font-weight: 700; color: #26354d; }
+
+        input[type="file"], input[type="text"], select {
+            width: 100%;
+            border: 1px solid #b9c5d7;
+            border-radius: 9px;
+            background: #fff;
+            color: #172033;
+            font: inherit;
+        }
+
+        input[type="file"] { padding: 9px; }
+        input[type="text"], select { padding: 11px 12px; }
+        input:focus, select:focus, button:focus-visible {
+            outline: 3px solid rgba(31, 100, 224, .24);
+            outline-offset: 2px;
+            border-color: #1f64e0;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        fieldset {
+            min-width: 0;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .check {
+            display: flex;
+            align-items: flex-start;
+            gap: 9px;
+            cursor: pointer;
+            font-size: .92rem;
+            font-weight: 500;
+            color: #26354d;
+        }
+
+        .check input { margin: 3px 0 0; accent-color: #1f64e0; }
+
+        button {
+            appearance: none;
+            border: 0;
+            border-radius: 9px;
+            padding: 12px 16px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background .15s ease, transform .15s ease, opacity .15s ease;
+        }
+
+        button:hover:not(:disabled) { transform: translateY(-1px); }
+        button:disabled { cursor: not-allowed; opacity: .55; }
+        .primary { background: #1f64e0; color: #fff; }
+        .primary:hover:not(:disabled) { background: #1854bf; }
+        .secondary { background: #147a45; color: #fff; }
+        .secondary:hover:not(:disabled) { background: #0f6238; }
+
+        #result {
+            display: grid;
+            gap: 14px;
+            margin-top: 26px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f2;
+        }
+
+        #status {
+            padding: 13px 14px;
+            border-radius: 9px;
+            font-size: .92rem;
+            line-height: 1.45;
+        }
+
+        .status-info { background: #edf4ff; color: #174a9c; }
+        .status-success { background: #eaf8ef; color: #176238; }
+        .status-error { background: #fff0f0; color: #a22828; }
+        .status-warning { background: #fff8e6; color: #765500; }
+
+        .report {
+            padding: 15px;
+            border: 1px solid #dce3ef;
+            border-radius: 9px;
+            background: #fafcff;
+        }
+
+        .report[hidden], #result[hidden] { display: none; }
+        .report ul { margin: 9px 0 0; padding-left: 20px; color: #4c5d76; }
+        .report li + li { margin-top: 5px; }
+
+        @media (max-width: 560px) {
+            body { padding: 18px 12px; }
+            .two-columns { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Manajemen Tabel DOCX</h1>
+        <p class="intro">
+            Hapus tabel berdasarkan <strong>Alt Title</strong> sekaligus otomatis pasang garis tepi (border) ke semua tabel tanpa mengubah warna aslinya.
+        </p>
+
+        <form id="docForm" novalidate>
+            <div class="field">
+                <label for="wordFile">File Word (.docx)</label>
+                <input id="wordFile" type="file" accept=".docx" required>
+            </div>
+
+            <div class="field">
+                <label for="altTitleInput">Alt Title Tabel yang Ingin Dihapus (Opsional)</label>
+                <input id="altTitleInput" type="text" placeholder="Kosongkan jika hanya ingin merapikan border saja" autocomplete="off">
+            </div>
+
+            <fieldset>
+                <label class="check" for="autoBorderCheck">
+                    <input id="autoBorderCheck" type="checkbox" checked>
+                    <span>Otomatis tambahkan border rapi ke semua tabel yang tersisa (tanpa mengubah warna/shading)</span>
+                </label>
+            </fieldset>
+
+            <button id="processBtn" class="primary" type="submit">Proses Dokumen</button>
+        </form>
+
+        <section id="result" aria-live="polite" hidden>
+            <div id="status" class="status-info"></div>
+            <div id="report" class="report" hidden></div>
+            <button id="downloadBtn" class="secondary" type="button" disabled>Unduh DOCX Hasil</button>
+        </section>
+    </main>
+
+    <script>
+        (() => {
+            "use strict";
+
+            const WORD_NAMESPACE = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+            const form = document.getElementById("docForm");
+            const fileInput = document.getElementById("wordFile");
+            const altTitleInput = document.getElementById("altTitleInput");
+            const autoBorderCheck = document.getElementById("autoBorderCheck");
+            const processBtn = document.getElementById("processBtn");
+            const result = document.getElementById("result");
+            const status = document.getElementById("status");
+            const report = document.getElementById("report");
+            const downloadBtn = document.getElementById("downloadBtn");
+
+            let processedBlob = null;
+            let outputFileName = "Dokumen_Modifikasi.docx";
+
+            function normalizeText(value) {
+                return String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+            }
+
+            function resetOutput() {
+                processedBlob = null;
+                downloadBtn.disabled = true;
+            }
+
+            function setStatus(message, kind) {
+                result.hidden = false;
+                status.textContent = message;
+                status.className = `status-${kind}`;
+            }
+
+            async function processDocument(file, targetTitle, applyBorder) {
+                const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+                const documentEntry = zip.file("word/document.xml");
+                if (!documentEntry) throw new Error("File DOCX tidak valid.");
+
+                const xmlText = await documentEntry.async("string");
+                const documentXml = new DOMParser().parseFromString(xmlText, "application/xml");
+                const wordNamespace = documentXml.documentElement.lookupNamespaceURI("w") || WORD_NAMESPACE;
+                
+                const tables = Array.from(documentXml.getElementsByTagNameNS(wordNamespace, "tbl"));
+                const expectedTitle = normalizeText(targetTitle);
+                
+                let removedCount = 0;
+                const removedTitles = [];
+
+                // 1. Proses Hapus Tabel Berdasarkan Alt Title (jika diisi)
+                if (expectedTitle) {
+                    tables.forEach((table) => {
+                        const tblPrList = table.getElementsByTagNameNS(wordNamespace, "tblPr");
+                        if (tblPrList.length === 0) return;
+                        const tblPr = tblPrList[0];
+
+                        let tableTitle = "";
+                        const captionEls = tblPr.getElementsByTagNameNS(wordNamespace, "tblCaption");
+                        if (captionEls.length > 0 && captionEls[0].hasAttribute("w:val")) {
+                            tableTitle = captionEls[0].getAttribute("w:val");
+                        } else {
+                            const descEls = tblPr.getElementsByTagNameNS(wordNamespace, "tblDescription");
+                            if (descEls.length > 0 && descEls[0].hasAttribute("w:val")) {
+                                tableTitle = descEls[0].getAttribute("w:val");
+                            }
+                        }
+
+                        if (tableTitle && normalizeText(tableTitle).includes(expectedTitle)) {
+                            table.remove();
+                            removedCount++;
+                            removedTitles.push(tableTitle);
+                        }
+                    });
+                }
+
+                // 2. Proses Auto Border ke Semua Tabel yang Tersisa (Tanpa Ubah Warna)
+                if (applyBorder) {
+                    // Ambil ulang tabel yang tersisa setelah penghapusan
+                    const remainingTables = Array.from(documentXml.getElementsByTagNameNS(wordNamespace, "tbl"));
+                    
+                    remainingTables.forEach((table) => {
+                        let tblPr = table.getElementsByTagNameNS(wordNamespace, "tblPr")[0];
+                        if (!tblPr) {
+                            tblPr = documentXml.createElementNS(wordNamespace, "w:tblPr");
+                            table.insertBefore(tblPr, table.firstChild);
+                        }
+
+                        let tblBorders = tblPr.getElementsByTagNameNS(wordNamespace, "tblBorders")[0];
+                        if (!tblBorders) {
+                            tblBorders = documentXml.createElementNS(wordNamespace, "w:tblBorders");
+                            tblPr.appendChild(tblBorders);
+                        }
+
+                        // Set border tipis standar (single) untuk semua sisi tanpa merusak background/shading sel
+                        ["top", "left", "bottom", "right", "insideH", "insideV"].forEach(side => {
+                            let border = tblBorders.getElementsByTagNameNS(wordNamespace, side)[0];
+                            if (!border) {
+                                border = documentXml.createElementNS(wordNamespace, `w:${side}`);
+                                tblBorders.appendChild(border);
+                            }
+                            border.setAttribute("w:val", "single");
+                            border.setAttribute("w:sz", "4"); // Ketebalan garis tipis
+                            border.setAttribute("w:space", "0");
+                            border.setAttribute("w:color", "auto"); // Mengikuti warna teks/default aman
+                        });
+                    });
+                }
+
+                zip.file("word/document.xml", new XMLSerializer().serializeToString(documentXml));
+                const blob = await zip.generateAsync({
+                    type: "blob",
+                    compression: "DEFLATE",
+                    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                });
+
+                return { blob, removedCount, removedTitles };
+            }
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                resetOutput();
+
+                const file = fileInput.files[0];
+                const targetTitle = altTitleInput.value.trim();
+                const applyBorder = autoBorderCheck.checked;
+
+                if (!file) {
+                    setStatus("Pilih file Word (.docx) terlebih dahulu.", "error");
+                    return;
+                }
+
+                processBtn.disabled = true;
+                processBtn.textContent = "Memproses...";
+                setStatus("Sedang memodifikasi dokumen Word...", "info");
+
+                try {
+                    const res = await processDocument(file, targetTitle, applyBorder);
+                    processedBlob = res.blob;
+                    outputFileName = file.name.replace(/\.docx$/i, "") + "_updated.docx";
+                    downloadBtn.disabled = false;
+
+                    let msg = "Berhasil memproses dokumen!";
+                    if (targetTitle) msg = `Berhasil menghapus ${res.removedCount} tabel & merapikan border.`;
+                    else if (applyBorder) msg = "Berhasil menambahkan border rapi ke seluruh tabel tanpa mengubah warna.";
+                    
+                    setStatus(msg, "success");
+
+                    if (res.removedTitles.length > 0) {
+                        report.hidden = false;
+                        report.innerHTML = `<b>Tabel terhapus:</b><ul>` + res.removedTitles.map(t => `<li>${t}</li>`).join("") + `</ul>`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setStatus("Gagal memproses file: " + err.message, "error");
+                } finally {
+                    processBtn.disabled = false;
+                    processBtn.textContent = "Proses Dokumen";
+                }
+            });
+
+            downloadBtn.addEventListener("click", () => {
+                if (!processedBlob) return;
+                const url = URL.createObjectURL(processedBlob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = outputFileName;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            fileInput.addEventListener("change", resetOutput);
+        })();
+    </script>
+</body>
+</html>
